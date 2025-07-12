@@ -10,18 +10,22 @@ load_dotenv("keys.env")
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
-# === Flask server to keep Render Web Service alive ===
-app = Flask(__name__)
+# === Keep-alive server ===
+def keep_alive():
+    app = Flask(__name__)
 
-@app.route("/")
-def index():
-    return "RoBIT is alive!"
+    @app.route("/")
+    def index():
+        return "RoBIT is alive!"
 
-def run_flask():
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+    def run():
+        app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
 
-# === Start Flask in a separate thread ===
-threading.Thread(target=run_flask).start()
+    thread = threading.Thread(target=run)
+    thread.start()
+
+# Start keep-alive server
+keep_alive()
 
 # === Set up OpenAI (Groq) ===
 openai.api_key = GROQ_API_KEY
