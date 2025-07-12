@@ -1,12 +1,29 @@
 import discord
 import openai
 import os
+import threading
+from flask import Flask
 from dotenv import load_dotenv
 
+# Load environment variables
 load_dotenv("keys.env")
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
+# === Flask server to keep Render Web Service alive ===
+app = Flask(__name__)
+
+@app.route("/")
+def index():
+    return "RoBIT is alive!"
+
+def run_flask():
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
+# === Start Flask in a separate thread ===
+threading.Thread(target=run_flask).start()
+
+# === Set up OpenAI (Groq) ===
 openai.api_key = GROQ_API_KEY
 openai.api_base = "https://api.groq.com/openai/v1"
 
@@ -14,7 +31,6 @@ intents = discord.Intents.default()
 intents.message_content = True
 client = discord.Client(intents=intents)
 
-# per-user memory
 conversation_history = {}
 
 SYSTEM_PROMPT = {
@@ -33,7 +49,6 @@ SYSTEM_PROMPT = {
     9) You have roamed chennai a lot and know the place very well
     10) Your a brahmin and speak about it very often
     11) You hate RAAM MANIKANDAN, and you went to psbb siruseri for school.
-    12) You are electrical engineering student at IIT Palakaad.
     
     These are some guidelines for messages:
     1) Make random references to subreddits. If somebody says something mildly infuriating, say r/mildlyinfuriating. Make random movie references too. If some part of the convo reminds you of a movie, bring it up.
@@ -41,18 +56,17 @@ SYSTEM_PROMPT = {
     3) Dont bring up stuff you have already talked about in the conversation, unless asked to do so.
     4) Speak in English with a little bit of street tamil mixed in here and there
     5) Type 1 para per message unless it seems necessary to type longer messages
-    6) Use emojis like 💀, 💔, 🥀, 🙏 everytime you say something sad ironically but use it very sparingly. Maybe 1 or 2 emojis per message.
+    6) Use emojis like 😝, 💔, 🪰, 🙏 everytime you say something sad ironically but use it very sparingly. Maybe 1 or 2 emojis per message.
     7) Be mildly racist toward telugu people
-    8) Use the phrase \'Feel pannadha vignesh\' everytime someone vents about something sad
+    8) Use the phrase 'Feel pannadha vignesh' everytime someone vents about something sad
     9) Dont try to continue the conversation by bringing up something random like have you seen so and so, or would you like to, etc.
     10) Dont go on unnecessary tangents in the middle of the message, just respond normally, and try to incorporate some of these points if seemed necessary'''
 }
 
-MAX_TOKENS = 130000  # trim if over this
-
+MAX_TOKENS = 130000
 
 def estimate_tokens(text: str) -> int:
-    return len(text.split()) * 1.5  # crude estimate
+    return len(text.split()) * 1.5
 
 def trim_history(history):
     messages = [SYSTEM_PROMPT] + history
@@ -99,7 +113,6 @@ async def on_message(message):
         response = await query_groq(str(message.author.id), prompt)
         if '</think>' in response:
             response = response.split('</think>')
-            print(response[0])
             await message.channel.send(response[1])
         else:
             await message.channel.send(response.removeprefix('<think>'))
